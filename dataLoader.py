@@ -9,7 +9,7 @@
 
 import pandas as pd
 from Bio import SeqIO
-
+import random
 
 file_path = "dataset_Rfam_6320_13classes.fasta"
 
@@ -42,3 +42,49 @@ print(df[df["Label"] == 1]["Sequence"].apply(len).mean()) # 120.0
 
 
 #IUPAC encoding
+
+# Mapowanie nukleotydów na jedna z zasad
+def IPUAC(nucleotide):
+    nucleotide_map = {
+        'R': ['A', 'G'],
+        'Y': ['C', 'T'],
+        'S': ['G', 'C'],
+        'W': ['A', 'T'],
+        'K': ['G', 'T'],
+        'M': ['A', 'C'],
+        'B': ['C', 'G', 'T'],
+        'D': ['A', 'G', 'T'],
+        'H': ['A', 'C', 'T'],
+        'V': ['A', 'C', 'G'],
+        'N': ['A', 'C', 'G', 'T']
+    }
+    if nucleotide == 'T':  
+        return 'U'
+    
+    if nucleotide in nucleotide_map:
+        elements = nucleotide_map[nucleotide]
+        return random.choice(elements)
+
+    return nucleotide
+
+# Zamiana sekwencji na IUPAC
+df["Sequence"] = df["Sequence"].apply(lambda x: "".join([IPUAC(nucleotide) for nucleotide in x]))
+
+
+nuc = {
+    'A': [1, 0, 0, 0],
+    'C': [0, 1, 0, 0],
+    'G': [0, 0, 1, 0],
+    'U': [0, 0, 0, 1]
+}
+
+# one hot encoding
+def one_hot_encoding(sequence):
+    return [nuc[nucleotide] for nucleotide in sequence]
+
+# Tworzenie tensora z one hot encodingiem
+# batch_size - rozmiar batcha   
+batch_size = 32
+
+# tenosr 
+
