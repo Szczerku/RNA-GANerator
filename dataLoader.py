@@ -1,90 +1,105 @@
-# ladowanie pliku fasta
-# podzial na rodziny 
-# wybor rodziny do labelowania
-# zamiana na nukleotydy - IUPAC 
-# output batch tensorow z one hot encodingiem
-
-
-# 1. wczytanie pliku fasta
-
+import torch
+from torch.utils.data import Dataset, DataLoader
 import pandas as pd
-from Bio import SeqIO
 import random
+from Bio import SeqIO
 
-file_path = "dataset_Rfam_6320_13classes.fasta"
-
-# Odczytanie wszystkich sekwencji z pełnym opisem
-
-data = []
-
-for record in SeqIO.parse(file_path, "fasta"):
-    header_parts = record.description.split()  # Rozdzielenie nagłówka
-    seq_id = header_parts[0]  # Pierwsza część to np. RF00001_M28193_1_1-119
-    seq_type = header_parts[1] if len(header_parts) > 1 else "Unknown"  # Druga część np. 5S_rRNA
-    sequence = str(record.seq)
-    label = 0  # Domyślnie ustawiamy label na 0
-    
-    data.append([seq_id, seq_type, sequence, label])
-
-# Tworzenie DataFrame
-df = pd.DataFrame(data, columns=["ID", "Type", "Sequence", "Label"])
-
-#print all types
-#print(df["Type"].unique())
-#  wybor rodziny dla ktorej label bedzie 1 a nie 0
-# ALL familes: ['5S_rRNA' '5_8S_rRNA' 'tRNA' 'ribozyme' 'CD-box' 'miRNA' 'Intron_gpI' 'Intron_gpII' 'HACA-box' 'riboswitch' 'IRES' 'leader' 'scaRNA']
-
-family = "5S_rRNA"
-df.loc[df["Type"] == family, "Label"] = 1
-
-# stats for family with label 1 for example mean length ITS NECESSARY TO SET THIS VALUE IN GENERATOR - SEQUENCE LENGTH
-print(df[df["Label"] == 1]["Sequence"].apply(len).mean()) # 120.0
-
-
-#IUPAC encoding
-
-# Mapowanie nukleotydów na jedna z zasad
-def IPUAC(nucleotide):
+# IUPAC encoding with guaranteed T to U conversion
+def IUPAC(nucleotide):
+    # First convert T to U
+    if nucleotide == 'T':
+        return 'U'
+        
     nucleotide_map = {
         'R': ['A', 'G'],
-        'Y': ['C', 'T'],
+        'Y': ['C', 'U'],  # Changed T to U here as well
         'S': ['G', 'C'],
-        'W': ['A', 'T'],
-        'K': ['G', 'T'],
+        'W': ['A', 'U'],  # Changed T to U here as well
+        'K': ['G', 'U'],  # Changed T to U here as well
         'M': ['A', 'C'],
-        'B': ['C', 'G', 'T'],
-        'D': ['A', 'G', 'T'],
-        'H': ['A', 'C', 'T'],
+        'B': ['C', 'G', 'U'],  # Changed T to U here as well
+        'D': ['A', 'G', 'U'],  # Changed T to U here as well
+        'H': ['A', 'C', 'U'],  # Changed T to U here as well
         'V': ['A', 'C', 'G'],
-        'N': ['A', 'C', 'G', 'T']
+        'N': ['A', 'C', 'G', 'U']  # Changed T to U here as well
     }
-    if nucleotide == 'T':  
-        return 'U'
     
     if nucleotide in nucleotide_map:
         elements = nucleotide_map[nucleotide]
         return random.choice(elements)
-
     return nucleotide
 
-# Zamiana sekwencji na IUPAC
-df["Sequence"] = df["Sequence"].apply(lambda x: "".join([IPUAC(nucleotide) for nucleotide in x]))
-
-
+# One-hot encoding - only for RNA nucleotides (A, C, G, U, N)
 nuc = {
     'A': [1, 0, 0, 0],
     'C': [0, 1, 0, 0],
     'G': [0, 0, 1, 0],
-    'U': [0, 0, 0, 1]
+    'U': [0, 0, 0, 1],
+    'N': [0, 0, 0, 0]
 }
 
-# one hot encoding
+# Convert sequence to RNA format (ensure all T are converted to U)
+def convert_to_rna(sequence):
+    return sequence.replace('T', 'U')
+
+# One-hot encoding
 def one_hot_encoding(sequence):
-    return [nuc[nucleotide] for nucleotide in sequence]
+    # Make sure sequence is in RNA format
+    rna_sequence = convert_to_rna(sequence)
+    return [nuc[nucleotide] for nucleotide in rna_sequence]
 
-# Tworzenie tensora z one hot encodingiem
-# batch_size - rozmiar batcha   
-batch_size = 32
+class datasetRNA(Dataset):
+    def __init__(self, file_path, family, sequence_length=120, only_positive=False):
+        self.data = []
+        self.sequence_length = sequence_length
+        self.family = family
+        
+        for record in SeqIO.parse(file_path, "fasta"):
+            header_parts = record.description.split()
+            seq_id = header_parts[0]
+            seq_type = header_parts[1] if len(header_parts) > 1 else "Unknown"
+            sequence = str(record.seq).upper()
+            label = 1 if seq_type == family else 0
+            
+            # Jeśli only_positive=True, pomijamy próbki z label=0
+            if only_positive and label == 0:
+                continue
 
-# tenosr 
+            # Trim or pad sequence to the specified length
+            sequence = sequence[:self.sequence_length]
+            if len(sequence) < self.sequence_length:
+                sequence += "N" * (self.sequence_length - len(sequence))
+            
+            # Convert any T to U before applying IUPAC
+            sequence = convert_to_rna(sequence)
+            
+            # Apply IUPAC conversion for each nucleotide
+            sequence = "".join([IUPAC(nucleotide) for nucleotide in sequence])
+            
+            self.data.append([seq_id, seq_type, sequence, label])
+    
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, idx):
+        seq_id, seq_type, sequence, label = self.data[idx]
+        one_hot = one_hot_encoding(sequence)
+        return torch.tensor(one_hot, dtype=torch.float32), torch.tensor(label, dtype=torch.long)
 
+# file_path = "/home/michal/Desktop/RNA_Monster/GANbert-RNA/dataset_Rfam_6320_13classes.fasta"
+# family = "5S_rRNA"  # Selected family
+# batch_size = 32
+# sequence_length = 120
+
+# dataset = datasetRNA(file_path, family, sequence_length, only_positive=True)
+# dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+# # Liczba batchy
+# num_batches = len(dataloader)
+# print(f"Liczba batchy w zbiorze danych: {num_batches}")
+
+# # Check the data in DataLoader
+# for inputs, labels in dataloader:
+#     print(f"Batch shapes - Inputs: {inputs.shape}, Labels: {labels.shape}")
+#     print(f"Label distribution: {labels.sum().item()}/{len(labels)} positive samples")
+#     break  # Break after the first batch

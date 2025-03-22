@@ -1,20 +1,31 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from noise import generate_noise
 from embedding import NoiseToRNAEmbedding, PositionalEncoding
-from bert import Encoder, EncoderBlock, MultiHeadAttention, FeedForward
+from encoder import Encoder, EncoderBlock, MultiHeadAttention, FeedForward
+
+"""
+Generator RNA
+Parameters:
+    - latent_dim: int - dimension of the noise vector
+    - sequence_length: int - length of the RNA sequence
+    - d_model: int - dimension of the model
+    - num_layers: int - number of transformer encoder layers
+    - num_heads: int - number of heads in multi-head attention
+    - d_ff: int - dimension of the feed-forward layer
+    - lstm_hidden_size: int - dimension of the LSTM hidden state
+    - lstm_layers: int - number of LSTM layers
+"""
 
 class generatorRNA(nn.Module):
-    def __init__(self, latent_dim, sequence_length, d_model, num_layers, num_heads, d_ff, dropout=0.1):
+    def __init__(self, latent_dim, sequence_length, d_model, num_layers, num_heads, d_ff, lstm_hidden_size=256, lstm_layers=1, dropout=0.1):
         super(generatorRNA, self).__init__()
 
-        # noise embedding and positional encoding
+        # Noise embedding and positional encoding functions
         self.noise_embedding = NoiseToRNAEmbedding(latent_dim, sequence_length, d_model)
         self.positional_encoding = PositionalEncoding(sequence_length, d_model)
 
-        # transformer encoder blocks
+        # Transformer encoder blocks
         encoder_blocks = []
         for _ in range(num_layers):
             attention_block = MultiHeadAttention(d_model, num_heads, dropout)
@@ -24,51 +35,45 @@ class generatorRNA(nn.Module):
         
         self.encoder = Encoder(d_model, encoder_blocks)
 
-        self.output = nn.Linear(d_model, 4)
+        self.batch_norm = nn.BatchNorm1d(sequence_length)
+
+        self.lstm = nn.LSTM(
+            input_size = d_model,
+            hidden_size=lstm_hidden_size,
+            num_layers=lstm_layers,
+            dropout=dropout if lstm_layers > 1 else 0,
+            bidirectional=False,
+            batch_first=True
+        )
+
+        self.output = nn.Sequential(
+            nn.Linear(lstm_hidden_size, lstm_hidden_size // 2),
+            nn.LayerNorm(lstm_hidden_size // 2),
+            nn.GELU(),
+            nn.Linear(lstm_hidden_size // 2, 4)  # 4 nucleotides A, C, G, U
+        )
 
     def forward(self, noise):
-        # noise embedding
+        # Noise embedding
         embedded = self.noise_embedding(noise)
         
-        # add positional encoding
+        # Add positional encoding
         embedded_with_pos = self.positional_encoding(embedded)
         
-        # transformer processing
+        # Transformer processing
         transformer_output = self.encoder(embedded_with_pos, mask=None)
+
+        # Batch normalization
+        # Before: [batch, sequence, features] ->  [batch, features, sequence]
+        transformer_output = transformer_output.transpose(1, 2)
+        transformer_output = self.batch_norm(transformer_output)
+        transformer_output = transformer_output.transpose(1, 2)
+                
+        # LSTM processing
+        lstm_output, _ = self.lstm(transformer_output)
         
-        # output projection to nucleotide space
-        output = self.output(transformer_output)
-        
-        # Używamy softmax aby uzyskać prawdopodobieństwa dla każdego nukleotydu
-        output_probs = F.softmax(output, dim=-1)
-        
-        # Konwersja do postaci one-hot (opcjonalnie)
-        nucleotide_indices = torch.argmax(output_probs, dim=-1)
-        one_hot_output = F.one_hot(nucleotide_indices, num_classes=4).float()
-        
-        return one_hot_output  # lub return output_probs, jeśli potrzebujesz prawdopodobieństw
-        
-
-
-# Test
-latent_dim = 256 # its value that describes the size of the latent space 
-batch_size = 32 # its the number of samples f.e if you have batch size 32 then sample size is 32
-
-sequence_length = 100
-
-num_layers = 12
-num_heads = 8
-d_model = 512
-d_ff = 2048
-dropout = 0.1
-
-model = generatorRNA(latent_dim, sequence_length, d_model, num_layers, num_heads, d_ff, dropout)
-
-noise = generate_noise(latent_dim, batch_size)
-
-output = model(noise)
-
-# Drukowanie wyników
-print("Kształt wyjścia:", output.shape)  # Powinno być [batch_size, sequence_length, 4]
-print("Przykładowe wektory one-hot:")
-print(output[0])  # Pokazuje pierwszą sekwencję z batcha
+        # output layer
+        logits = self.output(lstm_output)
+        probs = F.gumbel_softmax(logits, tau=0.5, hard=True)
+        return probs 
+# probs - [batch, sequence, 4] - 4 nucleotides A, C, G, U each sequence = [[0,1,0,0], ... etc.

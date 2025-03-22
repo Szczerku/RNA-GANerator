@@ -1,5 +1,5 @@
-# Mój Projekt
+# GANbert-RNA
 
-## Diagram
+## Project Schema
 
 ![Diagram](project.drawio.svg)
