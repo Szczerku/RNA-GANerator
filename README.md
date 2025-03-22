@@ -2,4 +2,4 @@
 
 ## Project Schema
 
-![Diagram](project.drawio.svg)
+![Diagram](Project_schema/project.drawio.svg)
