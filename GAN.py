@@ -22,7 +22,7 @@ batch_size = 64
 sequence_length = 120
 
 # Model architecture
-num_layers = 2 # layers in transformer encoder
+num_layers = 8 # layers in transformer encoder
 num_heads = 8
 d_model = 512
 d_ff = 2048
@@ -30,18 +30,15 @@ dropout = 0.3
 
 # Training parameters
 n_epochs = 200
-n_critic = 1  # higher number whan generator is weak smaller when generator is strong
-lambda_gp = 1.0  # Reduced from 10 to 1.0 for better gradient penalty balance
-clip_value = 0.5  # For gradient clipping
+n_critic = 5  # Increase if the generator is weak, decrease if the generator is strong
+lambda_gp = 10  # Increase if the discriminator learns too aggressively, decrease if it learns too slowly
 
 # Learning rates: higher for discriminator, lower for generator
 lr_d = 0.0001
 lr_g = 0.001
 
-# Create directories for saving models and logs
-save_dir = "./saved_models"
+# Create directories for logs
 log_dir = "./logs"
-os.makedirs(save_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 log_file = os.path.join(log_dir, f"training_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
 
@@ -68,8 +65,10 @@ else:
 # print(f"Dataset loaded: {len(dataset)} samples, batch size: {dataloader.batch_size}")
 
 file_path = "/home/michal/Desktop/RNA_Monster/GANbert-RNA/RF00097.fa"
+
 fastdataset = fastdatasetRNA(file_path, sequence_length, only_positive=False)
 print(f"Średnia długość sekwencji: {fastdataset.average_sequence_length()}")
+
 dataloader = DataLoader(fastdataset, batch_size=batch_size, shuffle=True, drop_last=True)
 print(f"Dataset loaded: {len(fastdataset)} samples, batch size: {dataloader.batch_size}")
 
@@ -78,10 +77,11 @@ optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr_g, betas=(0.5, 0.99
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr_d, betas=(0.5, 0.999))
 
 # Gradient penalty for WGAN-GP
-def compute_gradient_penalty(D, real_samples, fake_samples, lambda_gp=1.0):
+def gradient_penalty(D, real_samples, fake_samples, lambda_gp=1.0):
     """Calculates the gradient penalty loss for WGAN GP"""
     # Random weight term for interpolation between real and fake samples
     alpha = Tensor(np.random.random((real_samples.size(0), 1, 1)))
+    alpha = alpha.expand_as(real_samples)
     # Get random interpolation between real and fake samples
     interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
     d_interpolates = D(interpolates)
@@ -95,7 +95,7 @@ def compute_gradient_penalty(D, real_samples, fake_samples, lambda_gp=1.0):
         retain_graph=True,
         only_inputs=True,
     )[0]
-    gradients = gradients.reshape(gradients.size(0), -1)
+    gradients = gradients.contiguous().view(gradients.size(0), -1)
     gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
     return lambda_gp * gradient_penalty
 
@@ -114,108 +114,53 @@ def log_metrics(epoch, batch, d_loss, g_loss, real_validity, fake_validity, real
 
 # Training loop
 batches_done = 0
-best_fooling_rate = 0
-best_d_loss = float('inf')
 
 for epoch in range(n_epochs):
     for i, (real_data, _) in enumerate(dataloader):
         real_rna = Variable(real_data.type(Tensor))
         
-        # -----------------
-        # Train Discriminator
-        # -----------------
-        optimizer_D.zero_grad()
-
-        # Generate fake RNA sequences
         z = generate_noise(latent_dim, batch_size)
-        with torch.no_grad():
-            fake_rna = generator(z).detach()
+        fake_rna = generator(z).detach()
 
-        # Measure discriminator's ability to classify real and fake samples
-        real_validity = discriminator(real_rna)
-        fake_validity = discriminator(fake_rna)
+        # Obliczenie predykcji dyskryminatora dla prawdziwych i fałszywych próbek
+        real_preds = discriminator(real_rna).detach()
+        fake_preds = discriminator(fake_rna).detach()
 
-        # Calculate gradient penalty
-        gp = compute_gradient_penalty(discriminator, real_rna.data, fake_rna.data, lambda_gp)
+        # Konwersja do wartości procentowych
+        real_as_real = (real_preds > 0.5).float().mean().item() * 100  # Prawdziwe uznane za prawdziwe
+        real_as_fake = 100 - real_as_real  # Prawdziwe uznane za fałszywe
 
-        # Discriminator loss
-        d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + gp
+        fake_as_fake = (fake_preds < 0.5).float().mean().item() * 100  # Fałszywe uznane za fałszywe
+        fake_as_real = 100 - fake_as_fake  # Fałszywe uznane za prawdziwe
+        
+        # Obliczenie skuteczności dyskryminatora
+        d_accuracy = (real_as_real + fake_as_fake) / 2  # Średnia skuteczność D
+        g_fooling_rate = 100 - fake_as_fake  # Ile fałszywych D uznał za prawdziwe
+
+        # Liczenie strat dyskryminatora
+        loss_real = real_preds.mean()
+        loss_fake = fake_preds.mean()
+        gp = gradient_penalty(discriminator, real_rna, fake_rna, lambda_gp)
+        d_loss = loss_fake - loss_real + gp
+
+        optimizer_D.zero_grad()
         d_loss.backward()
-        
-        # Clip gradients
-        torch.nn.utils.clip_grad_norm_(discriminator.parameters(), max_norm=clip_value)
-        
         optimizer_D.step()
-
-        # -----------------
-        # Train Generator
-        # -----------------
-        # Train generator every n_critic iterations
+        
         if i % n_critic == 0:
-            optimizer_G.zero_grad()
-
-            # Generate fake RNA sequences
             z = generate_noise(latent_dim, batch_size)
             fake_rna = generator(z)
-            
-            # Calculate generator's ability to fool the discriminator
-            fake_validity = discriminator(fake_rna)
-            
-            # Add L2 regularization to generator
-            l2_lambda = 0.001
-            l2_norm = sum(p.pow(2.0).sum() for p in generator.parameters())
-            
-            # Generator loss
-            g_loss = -torch.mean(fake_validity) + l2_lambda * l2_norm
+            g_loss = -discriminator(fake_rna).mean()
+
+            optimizer_G.zero_grad()
             g_loss.backward()
-            
-            # Clip gradients
-            torch.nn.utils.clip_grad_norm_(generator.parameters(), max_norm=clip_value)
-            
             optimizer_G.step()
 
-            # Calculate metrics using more robust thresholds
-            real_mean = torch.mean(real_validity).item()
-            fake_mean = torch.mean(fake_validity).item()
-            threshold = (real_mean + fake_mean) / 2
-            
-            real_pred = real_validity > threshold  # True if real samples classified as real
-            fake_pred = fake_validity < threshold  # True if fake samples classified as fake
+            print(f"[Epoch {epoch+1}/{n_epochs}] [Batch {i}/{len(dataloader)}] "
+                  f"[D loss: {d_loss.item():.4f}] [G loss: {g_loss.item():.4f}] "
+                  f"[D Accuracy: {d_accuracy:.2f}%] "
+                  f"[Real as Real: {real_as_real:.2f}%] [Real as Fake: {real_as_fake:.2f}%] "
+                  f"[Fake as Fake: {fake_as_fake:.2f}%] [Fake as Real: {fake_as_real:.2f}%] "
+                  f"[G Fooling Rate: {g_fooling_rate:.2f}%]")
 
-            real_accuracy = real_pred.float().mean().item() * 100
-            fake_accuracy = fake_pred.float().mean().item() * 100
-            gen_fooling_rate = 100 - fake_accuracy
-            
-            # Log training progress
-            log_metrics(epoch, i, d_loss.item(), g_loss.item(), real_validity, fake_validity, 
-                        real_accuracy, fake_accuracy, gen_fooling_rate)
-            
             batches_done += n_critic
-            
-            # Save best models based on metrics
-            if gen_fooling_rate > best_fooling_rate and epoch > 10:
-                best_fooling_rate = gen_fooling_rate
-                torch.save(generator.state_dict(), os.path.join(save_dir, "best_generator_fooling.pth"))
-                torch.save(discriminator.state_dict(), os.path.join(save_dir, "best_discriminator_fooling.pth"))
-                print(f"Saved best model with fooling rate: {best_fooling_rate:.2f}%")
-            
-            if d_loss.item() < best_d_loss and epoch > 10:
-                best_d_loss = d_loss.item()
-                torch.save(generator.state_dict(), os.path.join(save_dir, "best_generator_dloss.pth"))
-                torch.save(discriminator.state_dict(), os.path.join(save_dir, "best_discriminator_dloss.pth"))
-                print(f"Saved best model with D loss: {best_d_loss:.4f}")
-    
-    # Save checkpoint after each epoch
-    if epoch % 10 == 0 or epoch == n_epochs - 1:
-        torch.save({
-            'epoch': epoch,
-            'generator_state_dict': generator.state_dict(),
-            'discriminator_state_dict': discriminator.state_dict(),
-            'optimizer_G_state_dict': optimizer_G.state_dict(),
-            'optimizer_D_state_dict': optimizer_D.state_dict(),
-            'best_fooling_rate': best_fooling_rate,
-            'best_d_loss': best_d_loss,
-        }, os.path.join(save_dir, f"checkpoint_epoch_{epoch}.pth"))
-        print(f"Saved checkpoint at epoch {epoch}")
-
-print("Training complete!")

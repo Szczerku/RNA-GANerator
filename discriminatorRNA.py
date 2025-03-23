@@ -4,7 +4,7 @@ import torch.nn as nn
 ## UWAGA NIE UWZGLEDNIA PADDINGU Jeśli twoje RNA może mieć różne długości, 
 # warto dodać pack_padded_sequence i pad_packed_sequence W FUNKCJI FORWARD!!!!
 class discriminatorRNA(nn.Module):
-    def __init__(self, sequence_length, hidden_size=64, num_layers=2, dropout=0.3):
+    def __init__(self, sequence_length, hidden_size=256, num_layers=2, dropout=0.4):
         super(discriminatorRNA, self).__init__()
         
         self.sequence_length = sequence_length
@@ -12,17 +12,17 @@ class discriminatorRNA(nn.Module):
 
         # Convolutional layers do wyodrębnienia cech z sekwencji
         self.conv_layers = nn.Sequential(
-            nn.Conv1d(in_channels=input_size, out_channels=32, kernel_size=3, padding=1),
-            nn.BatchNorm1d(32),
+            nn.Conv1d(in_channels=input_size, out_channels=128, kernel_size=3, padding=1),
+            nn.BatchNorm1d(128),
             nn.LeakyReLU(0.2),
             nn.Dropout(dropout),
 
-            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, padding=1),
-            nn.BatchNorm1d(64),
+            nn.Conv1d(in_channels=128, out_channels=256, kernel_size=3, padding=1),
+            nn.BatchNorm1d(256),
             nn.LeakyReLU(0.2),
             nn.Dropout(dropout),
 
-            nn.Conv1d(in_channels=64, out_channels=hidden_size, kernel_size=3, padding=1),
+            nn.Conv1d(in_channels=256, out_channels=hidden_size, kernel_size=3, padding=1),
             nn.BatchNorm1d(hidden_size),
             nn.LeakyReLU(0.2),
             nn.Dropout(dropout),

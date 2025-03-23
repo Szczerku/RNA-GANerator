@@ -18,7 +18,7 @@ Parameters:
 """
 
 class generatorRNA(nn.Module):
-    def __init__(self, latent_dim, sequence_length, d_model, num_layers, num_heads, d_ff, lstm_hidden_size=256, lstm_layers=1, dropout=0.1):
+    def __init__(self, latent_dim, sequence_length, d_model, num_layers, num_heads, d_ff, lstm_hidden_size=256, lstm_layers=2, dropout=0.1):
         super(generatorRNA, self).__init__()
 
         # Noise embedding and positional encoding functions
@@ -35,7 +35,7 @@ class generatorRNA(nn.Module):
         
         self.encoder = Encoder(d_model, encoder_blocks)
 
-        self.batch_norm = nn.BatchNorm1d(sequence_length)
+        self.batch_norm = nn.BatchNorm1d(d_model)
 
         self.lstm = nn.LSTM(
             input_size = d_model,
@@ -76,4 +76,4 @@ class generatorRNA(nn.Module):
         logits = self.output(lstm_output)
         probs = F.gumbel_softmax(logits, tau=0.5, hard=True)
         return probs 
-# probs - [batch, sequence, 4] - 4 nucleotides A, C, G, U each sequence = [[0,1,0,0], ... etc.
+# probs - [batch, sequence_length, 4] - 4 nucleotides A, C, G, U each sequence = [[0,1,0,0], ... etc.
