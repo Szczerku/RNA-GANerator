@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 from embedding import NoiseToRNAEmbedding, PositionalEncoding
 from encoder import Encoder, EncoderBlock, MultiHeadAttention, FeedForward
 
@@ -35,14 +36,11 @@ class generatorRNA(nn.Module):
         
         self.encoder = Encoder(d_model, encoder_blocks)
 
-        self.batch_norm = nn.BatchNorm1d(d_model)
-
         self.lstm = nn.LSTM(
             input_size = d_model,
             hidden_size=lstm_hidden_size,
             num_layers=lstm_layers,
             dropout=dropout if lstm_layers > 1 else 0,
-            bidirectional=False,
             batch_first=True
         )
 
@@ -62,13 +60,7 @@ class generatorRNA(nn.Module):
         
         # Transformer processing
         transformer_output = self.encoder(embedded_with_pos, mask=None)
-
-        # Batch normalization
-        # Before: [batch, sequence, features] ->  [batch, features, sequence]
-        transformer_output = transformer_output.transpose(1, 2)
-        transformer_output = self.batch_norm(transformer_output)
-        transformer_output = transformer_output.transpose(1, 2)
-                
+         
         # LSTM processing
         lstm_output, _ = self.lstm(transformer_output)
         
