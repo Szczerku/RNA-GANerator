@@ -2,9 +2,15 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+"""
+This module projects a random noise vector into a structured tensor suitable 
+for further processing as an RNA-like sequence representation.
+Specifically, the input noise vector is transformed using a linear layer 
+into a tensor of shape (sequence_length, embedding_size), mimicking the 
+structure of an embedded RNA sequence.
+The output tensor is then reshaped to (batch_size, sequence_length, embedding_size)
+"""
 
-# if we have noise vector we need to change it to tensor which will more suitable for RNA such as (length of RNA sequence, embedding size)
-# i use for this linear layer (H = W * noise + b) where W is weight matrix and b is bias vector
 class NoiseToRNAEmbedding(nn.Module):
     def __init__(self, noise_dim, sequence_length, embedding_size):
         super(NoiseToRNAEmbedding, self).__init__()
@@ -18,9 +24,13 @@ class NoiseToRNAEmbedding(nn.Module):
         return h.view(batch_size, self.sequence_length, self.embedding_size) * np.sqrt(self.embedding_size)
 
 
-# now i have to change this tensor to sensor with positional encoding 
-# H' =  h + PE where PE is positional encoding
-# I use for this sinusoidal positional encoding but you can use trained positional encoding
+"""
+This module applies sinusoidal positional encoding to a sequence tensor.
+The encoding injects information about token positions within the sequence,
+allowing models to distinguish between different positions.
+This implementation follows the sinusoidal positional encoding approach 
+introduced in "Attention is All You Need" (Vaswani et al., 2017).
+"""
 class PositionalEncoding(nn.Module):
     def __init__(self, seq_len, embedding_size):
         super(PositionalEncoding, self).__init__()

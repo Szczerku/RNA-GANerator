@@ -44,9 +44,9 @@ class MultiHeadAttention(nn.Module):
 
         assert d_model % num_heads == 0
 
-        self.d_model = d_model # embedingi dla jednego nukleotydu
-        self.num_heads = num_heads # liczba glow
-        self.d_k = d_model // num_heads # ilosc embedingow dla jednej glowy
+        self.d_model = d_model # embedding size for each nucleotid
+        self.num_heads = num_heads # number of heads in multi-head attention
+        self.d_k = d_model // num_heads # dimension of each head
         
         self.W_q = nn.Linear(d_model, d_model)
         self.W_k = nn.Linear(d_model, d_model)
@@ -79,7 +79,7 @@ class MultiHeadAttention(nn.Module):
         value = self.W_v(v)
 
         # (batch_size, seq_len, d_model) -> (batch_size, seq_len, num_heads, d_k) 
-        # -> (batch_size, num_heads, seq_len, d_k) dlatego transpose
+        # -> (batch_size, num_heads, seq_len, d_k)
         query = query.view(query.shape[0], query.shape[1], self.num_heads, self.d_k).transpose(1, 2)
         key = key.view(key.shape[0], key.shape[1], self.num_heads, self.d_k).transpose(1, 2)
         value = value.view(value.shape[0], value.shape[1], self.num_heads, self.d_k).transpose(1, 2)

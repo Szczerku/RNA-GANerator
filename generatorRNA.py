@@ -67,5 +67,4 @@ class generatorRNA(nn.Module):
         # output layer
         logits = self.output(lstm_output)
         probs = F.gumbel_softmax(logits, tau=0.5, hard=True)
-        return probs 
-# probs - [batch, sequence_length, 4] - 4 nucleotides A, C, G, U each sequence = [[0,1,0,0], ... etc.
+        return probs # probs - [batch, sequence_length, 4] - 4 nucleotides A, C, G, U each sequence = [[0,1,0,0], ... etc.
