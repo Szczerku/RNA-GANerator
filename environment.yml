@@ -1,0 +1,19 @@
+name: rna_gan_env
+channels:
+  - defaults
+  - conda-forge
+  - pytorch
+  - nvidia
+dependencies:
+  - python=3.10
+  - pytorch=2.4.0
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.4
+  - numpy
+  - pandas
+  - tqdm
+  - biopython
+  - pip
+  - pip:
+      - matplotlib

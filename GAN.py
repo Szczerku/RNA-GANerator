@@ -8,11 +8,10 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 
 # Importy lokalne
-from noise import generate_noise
-from generatorRNA import generatorRNA
-from discriminatorRNA import discriminatorRNA
-from dataLoader import datasetRNA
-from fastDataLoader import fastdatasetRNA
+from utils.noise_generator import generate_noise
+from models.generator_rna import GeneratorRNA
+from models.discriminator_rna import DiscriminatorRNA
+from loaders.fasta_data_loader import FastDatasetRNA
 
 # Ustawienie urządzenia
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -21,19 +20,19 @@ print(f"Using {device} for training")
 # Hyperparameters
 latent_dim = 256
 batch_size = 64
-sequence_length = 120
+sequence_length = 109
 
 # Model architecture
-num_layers = 2  # layers in transformer encoder
-num_heads = 16
-d_model = 512
-d_ff = 2048
-dropout = 0.3
+num_layers = 4  # layers in transformer encoder
+num_heads = 8
+d_model = 128
+d_ff = 512
+dropout = 0.1
 
 # Training parameters
-n_epochs = 5000
-lr_d = 0.00005  # Discriminator learning rate
-lr_g = 0.005   # Generator learning rate
+n_epochs = 10
+lr_d = 0.0001 # Discriminator learning rate
+lr_g = 0.0005   # Generator learning rate
 
 # Tworzenie katalogów logów
 log_dir = "./logs"
@@ -41,16 +40,16 @@ os.makedirs(log_dir, exist_ok=True)
 log_file = os.path.join(log_dir, f"training_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
 
 # Inicjalizacja modeli
-generator = generatorRNA(latent_dim, sequence_length, d_model, num_layers, num_heads, d_ff).to(device)
-discriminator = discriminatorRNA(sequence_length).to(device)
+generator = GeneratorRNA(latent_dim, sequence_length, d_model, num_layers, num_heads, d_ff).to(device)
+discriminator = DiscriminatorRNA(sequence_length).to(device)
 
 # Dataset setup
-file_path = r"C:\Users\michi\Desktop\RNA_Monster\RF00097.fa"
-fastdataset = fastdatasetRNA(file_path, sequence_length, only_positive=False)
-print(f"Średnia długość sekwencji: {fastdataset.average_sequence_length()}")
+file_path = r"C:\Users\michi\Desktop\RNA_Monster\data\RF00097.fa"
+dataloader = FastDatasetRNA(file_path, batch_size=batch_size, sequence_length=sequence_length)
+# print(f"Średnia długość sekwencji: {fastdataset.average_sequence_length()}")
 
-dataloader = DataLoader(fastdataset, batch_size=batch_size, shuffle=True, drop_last=True)
-print(f"Dataset loaded: {len(fastdataset)} samples, batch size: {dataloader.batch_size}")
+# dataloader = DataLoader(fastdataset, batch_size=batch_size, shuffle=True, drop_last=True)
+# print(f"Dataset loaded: {len(fastdataset)} samples, batch size: {dataloader.batch_size}")
 
 # Optymalizatory
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr_g, betas=(0.5, 0.999))
@@ -68,7 +67,7 @@ for epoch in range(n_epochs):
     generator.train()
     discriminator.train()
 
-    for i, (real_data, _) in enumerate(dataloader):
+    for i, (real_data) in enumerate(dataloader):
         real_rna = real_data.to(device).float()
         batch_size = real_rna.size(0)
 
