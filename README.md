@@ -111,7 +111,9 @@ These models are stored in the saved_models/ directory (or a custom path if spec
 
 1. Basic Usage
 
-To generate sequences using default parameters, you must specify the path to a trained generator model:
+To generate sequences using default parameters, you must specify the path to a trained generator model.
+
+For example, the following command uses a generator saved after epoch 1 and batch 1000:
 ```bash
 python generate_rna.py --model_path saved_models\generator_epoch_1_batch_1000.pth
 ```
