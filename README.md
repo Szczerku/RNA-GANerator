@@ -10,6 +10,38 @@
 ## Features
 
 - Generate RNA sequences of customizable length
-- 
+- Train on custom datasets in FASTA format
+- Built with PyTorch
+- Easy-to-use
 
+## Instalation
+
+Clone the repo
+
+```bash
+git clone https://github.com/Szczerku/RNA-GANerator.git
+cd RNA-GANerator
+conda env create -f environment.yml
+conda init
+conda activate rna_gan_env
+```
+## Project Structure
+
+RNA-GANerator/
+├── data/
+│   └── RF00097.fa
+├── Project_schema/
+│   ├── logos.png
+│   └── project.drawio.svg
+├── environment.yml
+├── README.md
+└── run_wgan.py
+
+## Generator training
+
+```bash
+python run_wgan.py --data data\RF00097.fa
+```
+
+optional flags:
 
