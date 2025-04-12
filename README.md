@@ -79,7 +79,7 @@ optional flags:
 | `--n_critic`       | `int`    | `5`                   | Number of critic updates per generator update |
 | `--lambda_gp`      | `float`  | `10.0`                | Gradient penalty coefficient |
 | `--save_dir`       | `str`    | `saved_models/`       | Directory to save trained generator models |
-| `--log_dir`        | `str`    | `training_metrics/`   | File path for saving training logs |
+| `--log_dir`        | `str`    | *optional*            | File path for saving training logs |
 | `--lr_g`           | `float`  | `0.0005`              | Learning rate for the generator |
 | `--lr_c`           | `float`  | `0.0001`              | Learning rate for the critic |
 
