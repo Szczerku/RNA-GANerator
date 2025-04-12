@@ -16,27 +16,47 @@
 
 ## Instalation
 
-Clone the repo
+1. Clone the repo
 
 ```bash
 git clone https://github.com/Szczerku/RNA-GANerator.git
 cd RNA-GANerator
+```
+
+2. Create and activate the conda environment
+Make sure you have conda installed. Then, create the environment from the provided environment.yml file:
+
+```bash
 conda env create -f environment.yml
 conda init
 conda activate rna_gan_env
 ```
+
+
 ## Project Structure
 
 ```plaintext
 RNA-GANerator/
 ├── data/
 │   └── RF00097.fa
-├── Project_schema/
-│   ├── logos.png
-│   └── project.drawio.svg
+├── GAN
+├── loaders/
+│   └── fasta_data_loader.py
+├── models/
+│   ├── critic.py
+│   ├── embedding.py
+│   └── resnet_generator_rna.py
+├── Project_schema
+├── utils/
+│   ├── init_device.py
+│   ├── init_weights.py
+│   └── noise_generator.py
+├── .gitignore
 ├── environment.yml
+├── generate_rna.py
 ├── README.md
-└── run_wgan.py
+├── run_wgan.py
+└── train_wgan_gp.py
 ```
 
 ## Generator Training

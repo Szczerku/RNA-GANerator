@@ -39,7 +39,7 @@ def main():
     parser.add_argument("--model_path", type=str, required=True, help="Path to the trained generator model")
     parser.add_argument("--total_sequences", type=int, default=1000, help="Number of sequences to generate")
     parser.add_argument("--sequence_length", type=int, default=109, help="Length of the generated sequences")
-    parser.add_argument("--output_dir", type=str, default="sequences", help="Directory to save generated sequences")
+    parser.add_argument("--output_dir", type=str, default="generated_fasta", help="Directory to save generated sequences")
     parser.add_argument("--latent_dim", type=int, default=256, help="Latent dimension for noise generation")
     parser.add_argument("--device", type=str, default="cpu", help="Device to use for generation (cpu or cuda)")
     args = parser.parse_args()
