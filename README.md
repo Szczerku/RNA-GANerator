@@ -24,6 +24,7 @@ cd RNA-GANerator
 ```
 
 2. Create and activate the conda environment
+
 Make sure you have conda installed. Then, create the environment from the provided environment.yml file:
 
 ```bash
