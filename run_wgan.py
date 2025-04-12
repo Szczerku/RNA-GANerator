@@ -13,7 +13,7 @@ python run_gan.py --data data/RF00097.fa
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run WGAN-GP for RNA sequence generation")
+    parser = argparse.ArgumentParser(description="Run WGAN-GP for training RNA sequences")
     parser.add_argument("--data", type=str, default="data/RF00097.fa", help="Path to the RNA sequence data file")
     parser.add_argument("--epochs", type=int, default=15, help="Number of training epochs")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument("--n_critic", type=int, default=5)
     parser.add_argument("--lambda_gp", type=float, default=10.0)
     parser.add_argument("--save_dir", type=str, default="saved_models") # default none 
-    parser.add_argument("--log_file", type=str, default="training_metrics.csv") # default none
+    parser.add_argument("--log_file", type=str, help="Path to the log file (optional)")
     parser.add_argument("--lr_g", type=float, default=0.0005, help="Generator learning rate")
     parser.add_argument("--lr_c", type=float, default=0.0001, help="Critic learning rate")
     return parser.parse_args()

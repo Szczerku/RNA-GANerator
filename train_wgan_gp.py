@@ -3,24 +3,18 @@ import os
 import csv
 from utils.noise_generator import generate_noise
 
-metrics_log_path = "training_metrics.csv"
-if not os.path.exists(metrics_log_path):
-    with open(metrics_log_path, 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(["batch", "d_loss", "g_loss", "d_real", "d_fake", "wasserstein_distance"])
 
-def log_metrics(batch, d_loss, g_loss, critic_real, critic_fake):
-    real_threshold = torch.median(critic_real).item()
-    fake_threshold = torch.median(critic_fake).item()
-
-    real_accuracy = torch.mean((critic_real > fake_threshold).float()).item() * 100
-    fake_accuracy = torch.mean((critic_fake < real_threshold).float()).item() * 100
-    gen_fooling_rate = torch.mean((critic_fake > torch.median(critic_real)).float()).item() * 100
-
+def log_metrics(batch, d_loss, g_loss, critic_real, critic_fake, log_path):
+    # real_threshold = torch.median(critic_real).item()
+    # fake_threshold = torch.median(critic_fake).item()
+    # real_accuracy = torch.mean((critic_real > fake_threshold).float()).item() * 100
+    # fake_accuracy = torch.mean((critic_fake < real_threshold).float()).item() * 100
+    # gen_fooling_rate = torch.mean((critic_fake > torch.median(critic_real)).float()).item() * 100
     d_real_mean = torch.mean(critic_real).item()
     d_fake_mean = torch.mean(critic_fake).item()
     wasserstein_distance = d_real_mean - d_fake_mean
-    with open(metrics_log_path, mode='a', newline='') as f:
+
+    with open(log_path, mode='a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([
             batch,
@@ -30,15 +24,13 @@ def log_metrics(batch, d_loss, g_loss, critic_real, critic_fake):
             d_fake_mean,
             wasserstein_distance
         ])
-    log_str = (
+
+    print(
         f"[Batch {batch+1}] "
         f"[D loss: {d_loss:.4f}] [G loss: {g_loss:.4f}] "
-        f"[Real Acc: {real_accuracy:.2f}%] [Fake Acc: {fake_accuracy:.2f}%] "
-        f"[Gen Fooled: {gen_fooling_rate:.2f}%] "
         f"[Real val: {d_real_mean:.4f}] [Fake val: {d_fake_mean:.4f}] "
         f"[D(real) - D(fake): {wasserstein_distance:.4f}]"
     )
-    print(log_str)
 
 
 def gradient_penalty(critic, real_samples, fake_samples, device="cpu"):
@@ -68,22 +60,31 @@ def gradient_penalty(critic, real_samples, fake_samples, device="cpu"):
 def train_wgan_gp(generator, critic, dataset, args, device):
     generator.train()
     critic.train()
-
+    # directory for generator models
     os.makedirs(args.save_dir, exist_ok=True)
+    # directory for training metrics (only if log_file is provided)
+    # Prepare metric logging if enabled
+    log_metrics_enabled = args.log_file is not None
+    log_path = os.path.join(args.log_file, "metrics.csv") if log_metrics_enabled else None
+
+    if log_metrics_enabled:
+        os.makedirs(args.log_file, exist_ok=True)
+        with open(log_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                "batch", "d_loss", "g_loss",
+                "critic_real_mean", "critic_fake_mean", "wasserstein_distance"
+            ])
 
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=args.lr_g, betas=(0.5, 0.999))
     optimizer_C = torch.optim.Adam(critic.parameters(), lr=args.lr_c, betas=(0.5, 0.999))
-
-    if not os.path.exists(args.log_file):
-        with open(args.log_file, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(["epoch", "d_loss", "g_loss", "wasserstein_distance"])
 
     total_batches = 0
 
     for epoch in range(args.epochs):
         for i, (real_data) in enumerate(dataset.dataloader):
             total_batches += 1
+
             if total_batches % 100 == 0:
                 #save generator model
                 torch.save(generator.state_dict(), os.path.join(args.save_dir, f"generator_epoch_{epoch}_batch_{total_batches}.pth"))
@@ -111,7 +112,9 @@ def train_wgan_gp(generator, critic, dataset, args, device):
                 generator.zero_grad()
                 generator_loss.backward()
                 optimizer_G.step()
-            
-                log_metrics(total_batches, critic_loss.item(), generator_loss.item(), critic_real, critic_fake)
+
+            if log_metrics_enabled:
+                log_metrics(total_batches, critic_loss.item(), generator_loss.item(), critic_real, critic_fake, log_path)
+
 
 
