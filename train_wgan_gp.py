@@ -14,23 +14,23 @@ def log_metrics(epoch, batch_idx, num_batches, d_loss, g_loss, critic_real, crit
     d_fake_mean = torch.mean(critic_fake).item()
     wasserstein_distance = d_real_mean - d_fake_mean
 
-    with open(log_path, mode='a', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow([
-            batch_idx,
-            d_loss,
-            g_loss,
-            d_real_mean,
-            d_fake_mean,
-            wasserstein_distance
-        ])
-
     print(
         f"[Epoch {epoch+1}] [Batch {batch_idx+1}/{num_batches}] "
         f"[D loss: {d_loss:.4f}] [G loss: {g_loss:.4f}] "
         f"[Real val: {d_real_mean:.4f}] [Fake val: {d_fake_mean:.4f}] "
         f"[Wasserstein: {wasserstein_distance:.4f}]"
     )
+    if log_path:
+        with open(log_path, mode='a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                batch_idx,
+                d_loss,
+                g_loss,
+                d_real_mean,
+                d_fake_mean,
+                wasserstein_distance
+            ])
 
 
 
@@ -65,17 +65,20 @@ def train_wgan_gp(generator, critic, dataset, args, device):
     os.makedirs(args.save_dir, exist_ok=True)
     # directory for training metrics (only if log_file is provided)
     # Prepare metric logging if enabled
-    log_metrics_enabled = args.log_dir is not None
-    log_path = os.path.join(args.log_dir, "metrics.csv") if log_metrics_enabled else None
+    log_path = os.path.join(args.log_dir, "metrics.csv") if args.log_dir else None
 
-    if log_metrics_enabled:
+    if args.log_dir:
         os.makedirs(args.log_dir, exist_ok=True)
+        log_path = os.path.join(args.log_dir, "metrics.csv")
         with open(log_path, 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([
                 "batch", "d_loss", "g_loss",
                 "critic_real_mean", "critic_fake_mean", "wasserstein_distance"
             ])
+    else:
+        log_path = None
+
 
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=args.lr_g, betas=(0.5, 0.999))
     optimizer_C = torch.optim.Adam(critic.parameters(), lr=args.lr_c, betas=(0.5, 0.999))
@@ -113,9 +116,8 @@ def train_wgan_gp(generator, critic, dataset, args, device):
                 generator.zero_grad()
                 generator_loss.backward()
                 optimizer_G.step()
-
-            if log_metrics_enabled:
-                log_metrics(epoch, i, len(dataset.dataloader), critic_loss.item(), generator_loss.item(), critic_real, critic_fake, log_path)
+    
+            log_metrics(epoch, i, len(dataset.dataloader), critic_loss.item(), generator_loss.item(), critic_real, critic_fake, log_path)
 
 
 

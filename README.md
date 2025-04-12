@@ -74,12 +74,12 @@ optional flags:
 | `--data`           | `str`    | `data\RF00097.fa`     | Path to the input FASTA file with RNA sequences |
 | `--epochs`         | `int`    | `15`                  | Number of training epochs |
 | `--batch_size`     | `int`    | `64`                  | Batch size used during training |
-| `--seq_len`        | `int`    | *None*                | Fixed sequence length; if not set, uses 98th percentile |
+| `--seq_len`        | `int`    | *None*                | if not set - uses 98th percentile of dataset |
 | `--latent_dim`     | `int`    | `256`                 | Dimension of the latent noise vector |
 | `--n_critic`       | `int`    | `5`                   | Number of critic updates per generator update |
 | `--lambda_gp`      | `float`  | `10.0`                | Gradient penalty coefficient |
 | `--save_dir`       | `str`    | `saved_models/`       | Directory to save trained generator models |
-| `--log_file`       | `str`    | `training_metrics.csv`| File path for saving training logs |
+| `--log_dir`        | `str`    | `training_metrics/`   | File path for saving training logs |
 | `--lr_g`           | `float`  | `0.0005`              | Learning rate for the generator |
 | `--lr_c`           | `float`  | `0.0001`              | Learning rate for the critic |
 
