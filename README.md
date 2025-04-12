@@ -27,6 +27,7 @@ conda activate rna_gan_env
 ```
 ## Project Structure
 
+```plaintext
 RNA-GANerator/
 ├── data/
 │   └── RF00097.fa
@@ -36,6 +37,7 @@ RNA-GANerator/
 ├── environment.yml
 ├── README.md
 └── run_wgan.py
+```
 
 ## Generator training
 
