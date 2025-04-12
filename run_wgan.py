@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument("--n_critic", type=int, default=5)
     parser.add_argument("--lambda_gp", type=float, default=10.0)
     parser.add_argument("--save_dir", type=str, default="saved_models") # default none 
-    parser.add_argument("--log_file", type=str, help="Path to the log file (optional)")
+    parser.add_argument("--log_dir", type=str, help="Path to the log file (optional)")
     parser.add_argument("--lr_g", type=float, default=0.0005, help="Generator learning rate")
     parser.add_argument("--lr_c", type=float, default=0.0001, help="Critic learning rate")
     return parser.parse_args()

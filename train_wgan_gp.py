@@ -4,7 +4,7 @@ import csv
 from utils.noise_generator import generate_noise
 
 
-def log_metrics(batch, d_loss, g_loss, critic_real, critic_fake, log_path):
+def log_metrics(epoch, batch_idx, num_batches, d_loss, g_loss, critic_real, critic_fake, log_path):
     # real_threshold = torch.median(critic_real).item()
     # fake_threshold = torch.median(critic_fake).item()
     # real_accuracy = torch.mean((critic_real > fake_threshold).float()).item() * 100
@@ -17,7 +17,7 @@ def log_metrics(batch, d_loss, g_loss, critic_real, critic_fake, log_path):
     with open(log_path, mode='a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([
-            batch,
+            batch_idx,
             d_loss,
             g_loss,
             d_real_mean,
@@ -26,11 +26,12 @@ def log_metrics(batch, d_loss, g_loss, critic_real, critic_fake, log_path):
         ])
 
     print(
-        f"[Batch {batch+1}] "
+        f"[Epoch {epoch+1}] [Batch {batch_idx+1}/{num_batches}] "
         f"[D loss: {d_loss:.4f}] [G loss: {g_loss:.4f}] "
         f"[Real val: {d_real_mean:.4f}] [Fake val: {d_fake_mean:.4f}] "
-        f"[D(real) - D(fake): {wasserstein_distance:.4f}]"
+        f"[Wasserstein: {wasserstein_distance:.4f}]"
     )
+
 
 
 def gradient_penalty(critic, real_samples, fake_samples, device="cpu"):
@@ -64,11 +65,11 @@ def train_wgan_gp(generator, critic, dataset, args, device):
     os.makedirs(args.save_dir, exist_ok=True)
     # directory for training metrics (only if log_file is provided)
     # Prepare metric logging if enabled
-    log_metrics_enabled = args.log_file is not None
-    log_path = os.path.join(args.log_file, "metrics.csv") if log_metrics_enabled else None
+    log_metrics_enabled = args.log_dir is not None
+    log_path = os.path.join(args.log_dir, "metrics.csv") if log_metrics_enabled else None
 
     if log_metrics_enabled:
-        os.makedirs(args.log_file, exist_ok=True)
+        os.makedirs(args.log_dir, exist_ok=True)
         with open(log_path, 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([
@@ -87,7 +88,7 @@ def train_wgan_gp(generator, critic, dataset, args, device):
 
             if total_batches % 100 == 0:
                 #save generator model
-                torch.save(generator.state_dict(), os.path.join(args.save_dir, f"generator_epoch_{epoch}_batch_{total_batches}.pth"))
+                torch.save(generator.state_dict(), os.path.join(args.save_dir, f"generator_epoch_{epoch+1}_batch_{total_batches}.pth"))
             
             batch_size = real_data.size(0)
             real_rna = real_data.float().to(device)
@@ -114,7 +115,7 @@ def train_wgan_gp(generator, critic, dataset, args, device):
                 optimizer_G.step()
 
             if log_metrics_enabled:
-                log_metrics(total_batches, critic_loss.item(), generator_loss.item(), critic_real, critic_fake, log_path)
+                log_metrics(epoch, i, len(dataset.dataloader), critic_loss.item(), generator_loss.item(), critic_real, critic_fake, log_path)
 
 
 
