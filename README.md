@@ -102,9 +102,33 @@ Available Options:
 
 
 ## Generating New Sequences
-Co 100 batchy zapisywany jest model w formacie .... do folderu saved_models lub do tego do ktorego podales w fladze.
-te modele moga byc nastepnie uzyte do generowania sekwencji RNA.
+During training, the generator model is automatically saved every 100 batches to a file named:
+```plaintext
+generator_epoch_{epoch}_batch_{total_batches}.pth
+```
 
+These models are stored in the saved_models/ directory (or a custom path if specified via the --save_dir flag). Once training is complete, you can use these saved generator checkpoints to produce new RNA sequences.
+
+1. Basic Usage
+
+To generate sequences using default parameters, you must specify the path to a trained generator model:
+```bash
+python generate_rna.py --model_path saved_models\generator_epoch_1_batch_1000.pth
+```
+IMPORTANT NOTES!!!
+- Make sure to match the sequence length (--sequence_length) used during training. The correct value is printed at the beginning of training.
+- The latent dimension (--latent_dim) must also match the value used to train the generator.
+- Using mismatched values may result in generation errors or invalid output.
+
+
+2. Custom Generation Example
+
+Generate 1500 sequences, each 120 nucleotides long:
+```bash
+python generate_rna.py --model_path saved_models\generator_epoch_1_batch_1000.pth --total_sequences 1500 --sequence_length 120
+```
+
+Available Options:
 | Flag                 | Type     | Default              | Description |
 |----------------------|----------|----------------------|-------------|
 | `--model_path`       | `str`    | **(required)**       | Path to the trained generator model |
