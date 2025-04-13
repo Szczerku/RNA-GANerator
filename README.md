@@ -168,8 +168,8 @@ UGCAUGAGCUCGGAUGCUUAGGCUAAGGUUAGGAUCCAGCUAGGAAGAUUUACCCG...
 
 
 ## References
-
-- Gulrajani et al., "Improved Training of Wasserstein GANs", NIPS 2017.
+- Goodfellow et al., "[Generative Adversarial Networks](https://arxiv.org/abs/1406.2661)", arXiv 2014.
+- Gulrajani et al., "[Improved Training of Wasserstein GANs](https://arxiv.org/abs/1704.00028)", arXiv 2017.
 - [Rfam RF00097](https://rfam.org/family/RF00097) – RNA dataset used in examples.
 
 
