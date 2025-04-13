@@ -2,36 +2,48 @@
 <!-- ## Project Schema -->
 <!-- ![Diagram](Project_schema/project.drawio.svg) -->
 
-# RNA-GANerator: ncRNA Sequence Generation using GANs(WGAN-GP)
+# RNA-GANerator: ncRNA Sequence Generation using GANs (WGAN-GP)
 ![Logo](Project_schema/logos.png)
 
-**RNA-GANerator** is a tool for generating biologically plausible RNA sequences using Generative Adversarial Networks (GANs). It's designed for researchers and developers working in bioinformatics, synthetic biology, or machine learning applied to genomics.
+**RNA-GANerator** is a tool for generating biologically plausible and structurally valid RNA sequences using Generative Adversarial Networks (WGAN-GP). It is designed for researchers and developers working in bioinformatics, synthetic biology, or machine learning applied to genomics.
+
+---
 
 ## Features
 
 - Generate RNA sequences of customizable length
 - Train on custom datasets in FASTA format
 - Built with PyTorch
-- Easy-to-use
+- User-friendly command-line interface
 
-## Instalation
+---
 
-1. Clone the repo
+## Requirements
+
+- Python 3.9+
+- Conda (Miniconda or Anaconda)
+- Git
+
+---
+
+## Installation
+
+1. Clone the repository:
 
 ```bash
 git clone https://github.com/Szczerku/RNA-GANerator.git
 cd RNA-GANerator
 ```
 
-2. Create and activate the conda environment
-
-Make sure you have conda installed. Then, create the environment from the provided environment.yml file:
+2. Create and activate the conda environment:
 
 ```bash
 conda env create -f environment.yml
 conda init
 conda activate rna_gan_env
 ```
+
+---
 
 
 ## Project Structure
@@ -60,20 +72,22 @@ RNA-GANerator/
 └── train_wgan_gp.py
 ```
 
+---
+
 ## Generator Training
 
 To train the WGAN-GP model on RNA sequences, you can use the default configuration or customize it with your own dataset and hyperparameters.
 
 1. Quick Start
 
-Simply run the following command to start training with the default dataset and parameters:
+Train the model with default settings:
 ```bash
 python run_wgan.py
 ```
 
 2. Custom Dataset
 
-If you want to use your own RNA dataset in FASTA format, place it inside the data/ directory. Below is an example using a custom file named RF00097.fa:
+Place your .fa file in the data/ directory and run:
 ```bash
 python run_wgan.py --data data\RF00097.fa
 ```
@@ -101,8 +115,11 @@ Available Options:
 | `--lr_c`           | `float`  | `0.0001`              | Learning rate for the critic |
 
 
+---
+
+
 ## Generating New Sequences
-During training, the generator model is automatically saved every 100 batches to a file named:
+Trained models are saved every 100 batches to a file named:
 ```plaintext
 generator_epoch_{epoch}_batch_{total_batches}.pth
 ```
@@ -117,10 +134,9 @@ For example, the following command uses a generator saved after epoch 1 and batc
 ```bash
 python generate_rna.py --model_path saved_models\generator_epoch_1_batch_1000.pth
 ```
-IMPORTANT NOTES!!!
-- Make sure to match the sequence length (--sequence_length) used during training. The correct value is printed at the beginning of training.
-- The latent dimension (--latent_dim) must also match the value used to train the generator.
-- Using mismatched values may result in generation errors or invalid output.
+
+**Important:**
+*Make sure --sequence_length and --latent_dim match the values used during training.*
 
 
 2. Custom Generation Example
@@ -139,3 +155,37 @@ Available Options:
 | `--output_dir`       | `str`    | `generated_fasta`    | Directory to save generated sequences |
 | `--latent_dim`       | `int`    | `256`                | Latent dimension for noise generation |
 | `--device`           | `str`    | `cpu`                | Device to use for generation (`cpu` or `cuda`) |
+
+*Example Output*
+```plaintext
+>generated_seq_001
+ACGGAUUCGAUGCUGACUGGAGCUAUGGCGUUAGUUGAUUAGGGAUGCUGAGGAUCG...
+>generated_seq_002
+UGCAUGAGCUCGGAUGCUUAGGCUAAGGUUAGGAUCCAGCUAGGAAGAUUUACCCG...
+```
+
+---
+
+
+## References
+
+- Gulrajani et al., "Improved Training of Wasserstein GANs", NIPS 2017.
+- [Rfam RF00097](https://rfam.org/family/RF00097) – RNA dataset used in examples.
+
+
+---
+
+
+## License
+
+This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
+
+
+---
+
+
+## Contact
+
+Developed by Michał Szczerkowski 
+Feel free to reach out via [m.szczerkovski@gmail.com] or create an issue on GitHub.
+
