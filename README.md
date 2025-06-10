@@ -5,7 +5,7 @@
 # RNA-GANerator: ncRNA Sequence Generation using GANs (WGAN-GP)
 ![Logo](Project_schema/logos.png)
 
-**RNA-GANerator** is a tool for generating biologically plausible and structurally valid RNA sequences using Generative Adversarial Networks (WGAN-GP). It is designed for researchers and developers working in bioinformatics, synthetic biology, or machine learning applied to genomics.
+**RNA-GANerator** is a tool for generating biologically plausible and structurally valid RNA sequences that imitate the characteristics of a specific RNA family. Built on the WGAN-GP architecture, it learns from real RNA sequences to synthesize new, family-specific samples that resemble authentic data. RNA-GANerator is particularly useful for RNA data augmentation in bioinformatics, synthetic biology, and machine learning applications in genomics.
 
 ---
 
